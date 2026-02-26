@@ -1,0 +1,223 @@
+%% Poisson_hillshade.m
+% Poisson editing fusion of multi-azimuth hillshades (UAV/DEM hillshade products).
+%
+% Repo structure (relative to this script):
+%   ./DATA_Hillshade/LIC15_300_45_2_1m.tif
+%   ./DATA_Hillshade/LIC15_60_45_2_1m.tif
+%   ./DATA_Hillshade/LIC15_180_45_2_1m.tif
+%   ./Possion_edit_originVersion.m
+%
+% Output:
+%   ./Poisson_results/ (GeoTIFFs + optional preview figure)
+%
+% Author: Yibo Li / Sun Yat-sen University
+% -------------------------------------------------------------------------
+
+clc; clear; close all;
+
+%% ===================== Resolve project root robustly =====================
+thisFile = mfilename('fullpath');
+
+if ~isempty(thisFile)
+    cur = fileparts(thisFile);   % folder containing this script
+else
+    cur = pwd;                   % fallback if run from command window/section
+end
+
+% Climb up until we find DATA_Hillshade (treat it as repo marker)
+projectRoot = cur;
+while ~isfolder(fullfile(projectRoot, 'DATA_Hillshade'))
+    parent = fileparts(projectRoot);
+    if strcmp(parent, projectRoot)
+        error(['Cannot locate DATA_Hillshade by climbing parents.' newline ...
+               'Current start folder: %s' newline ...
+               'Please cd to repo root or keep DATA_Hillshade in the repo.'], cur);
+    end
+    projectRoot = parent;
+end
+
+dataDir = fullfile(projectRoot, 'DATA_Hillshade');
+outDir  = fullfile(projectRoot, 'Poisson_results');
+if ~exist(outDir, 'dir'); mkdir(outDir); end
+
+% Files
+hs300File = fullfile(dataDir, 'LIC15_300_45_2_1m.tif');
+hs60File  = fullfile(dataDir, 'LIC15_60_45_2_1m.tif');
+hs180File = fullfile(dataDir, 'LIC15_180_45_2_1m.tif');
+
+% Diagnostics
+fprintf('Project root : %s\n', projectRoot);
+fprintf('Data folder  : %s\n', dataDir);
+
+assert(isfile(hs300File), 'Missing file: %s', hs300File);
+assert(isfile(hs60File),  'Missing file: %s', hs60File);
+assert(isfile(hs180File), 'Missing file: %s', hs180File);
+
+% Ensure Poisson function reachable: add repo to path once
+addpath(genpath(projectRoot));
+assert(exist('Possion_edit_originVersion', 'file') == 2, ...
+    'Cannot find Possion_edit_originVersion.m under repo. Check src/ path or spelling.');
+
+%% ===================== Parameters =====================
+tol = 1e-1;                 % quick demo tolerance (change for sensitivity tests)
+epsDen = 1e-12;             % for safe normalization
+
+% CRS: WGS84 / UTM zone 43S (EPSG:32743) as in your manuscript
+coordRefSysCode = 32743;
+
+%% ===================== Read GeoTIFFs =====================
+[H300, R300] = readgeoraster(hs300File);
+[H60,  R60 ] = readgeoraster(hs60File);
+[H180, R180] = readgeoraster(hs180File);
+
+% Use 300° reference as output reference (must be identical grids)
+R = R300;
+
+%% ===================== Convert + normalize =====================
+H300  = sanitizeHillshade(H300);
+H60   = sanitizeHillshade(H60);
+H180  = sanitizeHillshade(H180);
+
+if ~isequal(size(H300), size(H60), size(H180))
+    error("Hillshade grids have different sizes. Please resample to the same grid before Poisson editing.");
+end
+
+%% ===================== Poisson editing (two-stage) =====================
+% Stage 1: 60° -> 180°
+tic;
+H_180_60 = Possion_edit_originVersion(H60, H180, tol);
+t1 = toc;
+fprintf("Poisson editing (300°–60°), tol = %.0e, time = %.2f s\n", tol, t1);
+
+% Stage 2: (60-180) -> 300°
+tic;
+H_300_60_180 = Possion_edit_originVersion(H_180_60, H300, tol);
+t2 = toc;
+fprintf("Poisson editing ((300°–60°)–180°), tol = %.0e, time = %.2f s\n", tol, t2);
+
+%% ===================== Stats =====================
+fprintf("\n--- Raw output statistics ---\n");
+fprintf("H_300_60:      Min = %.4f, Max = %.4f\n", min(H_180_60(:)), max(H_180_60(:)));
+fprintf("H_300_60_180:  Min = %.4f, Max = %.4f\n", min(H_300_60_180(:)), max(H_300_60_180(:)));
+
+%% ===================== Normalize to [0,1] for visualization/export =====================
+H_300_60_norm     = minmaxNormalize(H_300_60,     epsDen);
+H_300_60_180_norm = minmaxNormalize(H_300_60_180, epsDen);
+
+fprintf("\n--- Normalization check ---\n");
+fprintf("H_180_60_norm:     Min = %.4f, Max = %.4f\n", min(H_300_60_norm(:)), max(H_300_60_norm(:)));
+fprintf("H_300_60_180_norm: Min = %.4f, Max = %.4f\n", min(H_300_60_180_norm(:)), max(H_300_60_180_norm(:)));
+
+%% ===================== Write GeoTIFFs =====================
+% Use clean, unambiguous file names
+f1 = fullfile(outDir, sprintf("Poisson_180_60_tol%.0e.tif", tol));
+f2 = fullfile(outDir, sprintf("Poisson_300_60_180_tol%.0e.tif", tol));
+f1n = fullfile(outDir, sprintf("Poisson_180_60_norm_tol%.0e.tif", tol));
+f2n = fullfile(outDir, sprintf("Poisson_300_60_180_norm_tol%.0e.tif", tol));
+
+writeGeoTiffSafe(f1,  H_180_60,         R, coordRefSysCode);
+writeGeoTiffSafe(f2,  H_300_60_180,     R, coordRefSysCode);
+writeGeoTiffSafe(f1n, H_180_60_norm,    R, coordRefSysCode);
+writeGeoTiffSafe(f2n, H_300_60_180_norm,R, coordRefSysCode);
+
+fprintf("\nSaved GeoTIFFs to: %s\n", outDir);
+
+%% ===================== Quick preview figure =====================
+% Optional: difference map to show what Stage 2 adds
+diffMap = H_300_60_180_norm - H_180_60_norm;
+
+fig = figure('Color','w','Units','centimeters','Position',[2 2 16 6]);
+tiledlayout(1,3,'TileSpacing','compact','Padding','compact');
+
+nexttile;
+imagesc(diffMap); axis image off; colormap(gray);
+title('Difference: Stage2 - Stage1','FontSize',9,'Interpreter','none');
+
+nexttile;
+imagesc(H_300_60_norm); axis image off;
+title('Poisson (300°–60°)','FontSize',9,'Interpreter','tex');
+
+nexttile;
+imagesc(H_300_60_180_norm); axis image off;
+title('Poisson ((300°–60°)–180°)','FontSize',9,'Interpreter','tex');
+
+cb = colorbar('SouthOutside');
+cb.Label.String = 'Normalized hillshade';
+cb.Label.FontSize = 9;
+
+% Export preview (optional)
+previewFile = fullfile(outDir, sprintf("Poisson_preview_tol%.0e.png", tol));
+exportPng(fig, previewFile, 600, true);
+fprintf("Saved preview: %s\n", previewFile);
+
+%% ===================== Local functions =====================
+function H = sanitizeHillshade(H)
+    H = double(H);
+    H(~isfinite(H)) = 0;
+
+    % Normalize 0-255 to [0,1] (your source likely 0-255)
+    if max(H(:)) > 1
+        % Use 255 or 254? keep robust: normalize by max possible if present
+        m = max(H(:));
+        if m > 0
+            H = H / m;
+        end
+    end
+    H = max(0, min(1, H));
+end
+
+function Hn = minmaxNormalize(H, epsDen)
+    mn = min(H(:));
+    mx = max(H(:));
+    den = mx - mn;
+    if den < epsDen
+        Hn = zeros(size(H));
+    else
+        Hn = (H - mn) / den;
+    end
+end
+
+function writeGeoTiffSafe(fname, A, R, epsg)
+    % Try CoordRefSysCode first, fallback to GeoKeyDirectoryTag if needed
+    try
+        geotiffwrite(fname, A, R, 'CoordRefSysCode', epsg);
+    catch
+        warning("geotiffwrite with CoordRefSysCode failed. Trying fallback write without EPSG.");
+        geotiffwrite(fname, A, R);
+    end
+end
+
+function exportPng(fig, outFile, dpi, transparentBG)
+    hasExportFig = exist('export_fig', 'file') == 2;
+
+    if hasExportFig
+        set(fig, 'InvertHardcopy','off');
+        if transparentBG
+            set(fig, 'Color','none');
+            ax = findall(fig,'Type','axes');
+            set(ax, 'Color','none');
+            export_fig(outFile, '-png', sprintf('-r%d', dpi), '-transparent');
+        else
+            export_fig(outFile, '-png', sprintf('-r%d', dpi));
+        end
+        return;
+    end
+
+    % exportgraphics fallback
+    if transparentBG
+        set(fig, 'Color','none');
+        ax = findall(fig,'Type','axes');
+        set(ax, 'Color','none');
+        bg = 'none';
+    else
+        bg = 'white';
+    end
+
+    try
+        exportgraphics(fig, outFile, 'Resolution', dpi, 'BackgroundColor', bg);
+    catch
+        warning("exportgraphics not available. Using print() fallback.");
+        set(fig, 'InvertHardcopy','off');
+        print(fig, outFile, '-dpng', sprintf('-r%d', dpi));
+    end
+end
