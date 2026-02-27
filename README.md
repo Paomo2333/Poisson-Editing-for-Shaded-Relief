@@ -47,4 +47,5 @@ This project is developed and tested in **MATLAB** *(e.g., R2022a or later)*.
 To run the scripts successfully, please ensure you have the following MATLAB Toolboxes installed:
 * **Image Processing Toolbox** *(Required for masking and general image operations)*
 * **Mapping Toolbox** *(Required for GeoTiff I/O and spatial data handling)*
-* *(Note to author: Please add or remove any other toolboxes you used, e.g., Optimization Toolbox, Curve Fitting Toolbox for the Dome profile)*
+* **Export_fig** *(Essential for exporting high-quality, publication-ready figures without background margins.
+*(Ensure this library is downloaded and added to your MATLAB path.)*
