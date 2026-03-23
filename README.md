@@ -99,55 +99,7 @@ conda activate icestools
 
 ---
 
-## 🚀 4. Quick Start
-
-Run each module from the repository root or adjust paths inside scripts. 
-
-**Dome‑effect correction (MATLAB)**
-```matlab
-% Fit dome-effect surface and compare profiles
-cd('Reliefshading_Github/1_Dome_profile');
-fit_dome_effect_surface  % Outputs corrected DEM and figures
-profile_line             % Generates multi-panel profile plots
-```
-
-**LIC generalization (MATLAB)**
-```matlab
-cd('../2_LIC_Generalization');
-run_LIC_hillshade_comparison  % Creates LIC smoothed hillshades
-```
-
-**Poisson hillshade fusion (MATLAB)**
-```matlab
-cd('../3_Reliefshading');
-Poisson_hillshade  % Reads hillshades from step 2 and performs fusion
-```
-
-**Mask classification (MATLAB)**
-```matlab
-cd('../4_Mask_Classification');
-plot_IOR_classification  % Generates classification maps
-```
-
-**ICESat‑2 optimization (Python Terminal)**
-```bash
-cd Reliefshading_Github/5_ICESat_Optimization
-jupyter notebook
-```
-*Open `ICESat_Accuracy_Optimization.ipynb` or `REMA_DEM_Check.ipynb` and follow the instructions in the first cell to set file paths.*
-
----
-
-## 📁 5. Input/Output Organization
-
-The scripts use relative paths wherever possible. Keep input and output folders separate to maintain a clean workspace:
-* Place raw DEMs in a folder such as `data/DEM_Data`.
-* Store sample/validation CSVs under `Reliefshading_Github/1_Dome_profile`.
-* Output figures will be saved in a `figures/` directory, and processed GeoTIFFs in an `output/` or `results/` folder.
-
----
-
-## ⚠️ 6. Troubleshooting
+## ⚠️ 4. Troubleshooting
 
 * **Missing files:** Verify that your paths to `.tif` and `.csv` inputs are correct and the directories exist.
 * **`geotiffwrite` or `readgeoraster` missing:** Install the MATLAB Mapping Toolbox.
@@ -157,7 +109,7 @@ The scripts use relative paths wherever possible. Keep input and output folders 
 
 ---
 
-## 🙏 7. Citation and Acknowledgements
+## 🙏 5. Citation and Acknowledgements
 
 If this code aids your research, please cite the associated paper and mention that you used multi‑azimuth hillshade fusion with Poisson editing. Please indicate relevant parameter settings such as azimuth angles and solver tolerances.
 
