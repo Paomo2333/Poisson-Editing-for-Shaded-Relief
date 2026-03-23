@@ -1,24 +1,29 @@
-# Poisson-Editing-for-Shaded-Relief
+# Poisson Editing for Shaded Relief
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-This repository implements and documents a Poisson-editing-based shaded-relief workflow for topographic enhancement, especially in low-to-moderate relief terrain (e.g., glacier geomorphology mapping scenarios). It provides MATLAB scripts that cover DEM preprocessing, hillshade generalization/fusion, and downstream classification visualization.
+[![MATLAB](https://img.shields.io/badge/Made_with-MATLAB-blue.svg)](https://www.mathworks.com/products/matlab.html)
+[![Python](https://img.shields.io/badge/Made_with-Python-1f425f.svg)](https://www.python.org/)
 
-## 1. Project Goal
+> **Official Repository for the paper:** > *"Enhancing Topographic Mapping Using Relief Shading: A Case Study of the Larsemann Hills, East Antarctica"*
 
-> **Official repository for the paper:** > *"Enhancing Glacier Geomorphology Mapping Using Relief Shading: A Case Study of the Larsemann Hills, East Antarctica"*
-The core workflow is:
-1. Generate (or load) hillshades from multiple illumination azimuths.
-2. Fuse complementary terrain cues via iterative Poisson editing.
-3. Export enhanced rasters and figures for geomorphological interpretation.
+## 📖 1. Overview
 
-## 📖 Overview
-This repository provides a simple, highly portable, and effective **relief shading method** based on Poisson editing. It is specifically designed to enhance topographic visualization for geomorphological mapping in areas with low to moderate terrain relief. 
-The repository is organized into four modules that can be run independently or chained together.
+This repository implements and documents a Poisson‑editing‑based shaded relief workflow designed to enhance topographic maps, particularly in low‑ to moderate‑relief terrains such as glaciers. 
 
-Our approach improves upon traditional methods by integrating and editing hillshades from multiple illumination directions. 
+Our approach generates multi‑directional hillshades from a Digital Elevation Model (DEM), fuses them using iterative Poisson editing, and produces high‑quality shaded reliefs optimized for geomorphological interpretation.
+
+The repository is organized into modular MATLAB and Python scripts that handle the complete pipeline:
+* **Correcting dome artifacts** in UAV‑derived DEMs.
+* **Generalizing DEMs** with Line Integral Convolution (LIC).
+* **Fusing multi‑azimuth hillshades** via Poisson editing.
+* **Performing mask‑based classification** of geomorphological units.
+* **Validating and optimizing DEM elevations** against ICESat‑2 along‑track data.
+
+Each module can be run independently or chained together for an end-to-end workflow.
+
 ---
 
-## 2. Repository Structure
+## 📂 2. Repository Structure
 
 ```text
 Poisson-Editing-for-Shaded-Relief/
@@ -27,142 +32,137 @@ Poisson-Editing-for-Shaded-Relief/
     ├── 1_Dome_profile/
     ├── 2_LIC_Generalization/
     ├── 3_Reliefshading/
-    └── 4_Mask_Classification/
+    ├── 4_Mask_Classification/
+    ├── 5_ICESat_Optimization/
+    └── 6_ReliefAnalysis/
 ```
 
-### 2.1 `1_Dome_profile` (Profile and dome-effect analysis)
-- `profile_line.m`: Loads five profile CSV pairs (raw vs processed), creates panel plots, and exports high-resolution figures.
-- `fit_dome_effect_surface.m`: Surface fitting for dome-effect error analysis.
-- Example data:
-  - `ErrorLine/Line1.csv ... Line5.csv`
-  - `No_errorLine/No_line1.csv ... No_line5.csv`
-  - `sample.xls`, `validation1.xls`
+### 2.1 `1_Dome_profile` – UAV DEM Optimization
+Assesses and corrects dome‑shaped systematic errors often found in Structure‑from‑Motion (SfM) DEMs.
+* **`fit_dome_effect_surface.m`**: Fits a quadratic surface to sample points (e.g., `sample.xls`) to model the dome effect, computes RMSE against validation points (e.g., `validation1.xls`), and outputs a corrected DEM alongside informative figures.
+* **`profile_line.m`**: Loads pairs of raw and detrended profile lines to produce multi‑panel plots for visual comparison.
+* *Note: Example input data are provided under this directory (`ErrorLine/Line*.csv`, `No_errorLine/No_line*.csv`, `sample.xls`, and `validation1.xls`).*
 
-### 2.2 `2_LIC_Generalization` (DEM generalization with LIC)
-- `run_LIC_hillshade_comparison.m`:
-  - Runs line integral convolution (LIC) on DEM data.
-  - Generates hillshades for different LIC lengths and compares them.
-  - Exports LIC-processed DEM rasters.
-- `line_integral_convolution.m`: LIC core algorithm.
-- `generate_hillshade.m`: Hillshade generation helper.
+### 2.2 `2_LIC_Generalization` – DEM Generalization with LIC
+Generalizes DEMs and generates smoothed hillshades via Line Integral Convolution.
+* **`run_LIC_hillshade_comparison.m`**: Orchestrates the LIC workflow. It loads a DEM, applies LIC with various kernel lengths, generates hillshades, and compares them.
+* **`line_integral_convolution.m`**: Implements the LIC algorithm.
+* **`generate_hillshade.m`**: A helper function for hillshade calculation.
+* *Note: Adjust the `projectRoot` and `dataDir` variables at the top of these scripts to match your local data layout.*
 
-> Note: This module assumes DEM input under `projectRoot/data/DEM_Data` by default. Adjust path variables in the script if your local data layout is different.
+### 2.3 `3_Reliefshading` – Poisson Hillshade Fusion
+**[Core Module]** Performs iterative Poisson editing to fuse multiple hillshades.
+* **`Poisson_hillshade.m`**: The main pipeline. Reads hillshades from multiple azimuths (e.g., 300°, 45°), normalizes and sanitizes them, performs two‑stage Poisson fusion, and exports fused GeoTIFFs and preview figures.
+* **`Poisson_edit.m`**: The internal Gauss–Seidel Poisson solver.
+* **`sanitizeHillshade.m` / `minmaxNormalize.m`**: Hillshade sanitization and normalization functions.
+* **`writeGeoTiffSafe.m`**: Helper script to safely export GeoTIFFs.
+* **`FigurePlotTime.m`**: Script for runtime analysis and sensitivity plotting.
+* *Note: Ensure your input hillshades follow the expected naming convention described in the script comments.*
 
-### 2.3 `3_Reliefshading` (Core Poisson fusion module)
-- `Poisson_hillshade.m`: Main pipeline script.
-  - Reads hillshades from multiple azimuths (e.g., `LIC15_300_45_2_1m.tif`).
-  - Performs two-stage Poisson fusion.
-  - Exports GeoTIFF outputs and a preview figure.
-- `Possion_edit.m`: Iterative Poisson solver (Gauss-Seidel style implementation).
-- `sanitizeHillshade.m` / `minmaxNormalize.m`: Hillshade sanitization and normalization.
-- `writeGeoTiffSafe.m`: Safer GeoTIFF export utility.
-- `FigurePlotTime.m`: Runtime and sensitivity plotting.
+### 2.4 `4_Mask_Classification` – Mask‑Based Classification
+Creates classification maps from ratio or index rasters (e.g., IOR).
+* **`plot_IOR_classification.m`**: Reads a ratio raster, plots the spatial distribution, generates a histogram and a binary classification (e.g., snow vs. bare rock), and exports a high‑resolution PNG.
 
-**Acknowledgements**: This work was inspired by and builds upon the suggestions from [Geisthövel, R., & Hurni, L. (2018)](#acknowledgements).
-> Note: `Poisson_hillshade.m` uses specific input-file naming and directory assumptions. Verify these before execution.
+### 2.5 `5_ICESat_Optimization` – ICESat‑2 Accuracy Assessment & Optimization
+A Python‑based module to cross‑validate DEM elevations against ICESat‑2 ATL06 data.
+* **`optimization_utils.py`**: Utility functions for loading ICESat‑2 ATL06 CSVs/HDF5 files, projecting them to your DEM CRS, clipping DEMs, sampling DEM values at ICESat points, computing error metrics, and building profile plots.
+* **`ICESat_Accuracy_Optimization.ipynb`**: A Jupyter Notebook demonstrating how to use `optimization_utils.py` to optimize a DEM using ICESat‑2 data.
+* **`REMA_DEM_Check.ipynb`**: A Notebook comparing your DEM with the REMA reference DEM, performing bias correction, and generating basic statistics.
+* *Note: This module evaluates the improvement from the dome‑effect correction and Poisson fusion relative to independent laser altimetry.*
 
-### 2.4 `4_Mask_Classification` (Mask-based classification and plotting)
-- `plot_IOR_classification.m`:
-  - Loads IOR raster.
-  - Produces a 3-panel figure (spatial map, histogram, binary classification).
-  - Exports a high-resolution PNG.
-- Example output: `figures/IOR_classification_3panel.png`
-
----
-
-## ⚙️ Repository Structure & Modules
-## 3. Environment Requirements
-
-Recommended environment:
-- MATLAB R2022a or newer.
-
-The pipeline is divided into four main processing modules:
-Common dependencies/toolboxes:
-- Image Processing Toolbox (image operations and masking workflows).
-- Mapping Toolbox (`readgeoraster`, `geotiffwrite`, geospatial raster I/O).
-- Optional: `export_fig` (some scripts prefer it for publication-quality exports).
+### 2.6 `6_ReliefAnalysis` – Relief Analysis and Evaluation
+Provides tools for analyzing the shaded relief and derived surfaces produced by previous modules to support interpretation and quality assessment.
+* **Relief Metric Computation**: Functions to derive slope, aspect, curvature, roughness, or hypsometric curves from DEMs or smoothed surfaces.
+* **Statistical Comparison**: Scripts to compare fused hillshades against reference data, compute pixel-level differences, and produce scatter plots.
+* **Visualization**: Helper routines to plot relief metrics and generate publication‑ready figures.
 
 ---
 
-### 1. UAV DEM Optimization (`1-Dome_profile`)
-Focuses on assessing and optimizing the quality of UAV-derived Digital Elevation Models (DEMs).
-* `profile_line`: Fits Dome errors and performs profile validation.
-## 4. Quick Start
+## 💻 3. Environment Requirements
 
-### 2. LIC Generalization (`2-LIC_Generalization`)
-Performs DEM generalization using the Line Integral Convolution (LIC) method.
-* `run_LIC_hillshade_comparison`: Generates and compares hillshades using the LIC method.
-In MATLAB, from the repository root, run module scripts as needed:
+### MATLAB (Modules 1–4)
+* **Version:** R2022a or later recommended.
+* **Required Toolboxes:**
+    * Image Processing Toolbox (for reading/writing images and operations).
+    * Mapping Toolbox (for `readgeoraster`, `geotiffwrite`, and coordinate handling).
+* **Optional:** `export_fig` (For publication‑quality figure exports; scripts safely fall back to `exportgraphics` if not installed).
 
-### 3. Relief Shading (`3-Reliefshading`)
-The core module for performing Poisson editing to fuse multi-directional hillshades.
-* `Poisson_hillshade`: Main executable script for the Poisson editing workflow.
-* `Poisson_edit`: Core algorithmic implementation of the Poisson edit.
-* `sanitizeHillshade`: Preprocesses and normalizes raw hillshade data.
-* `minmaxNormalize`: Applies Min-Max normalization to the generated shaded relief.
-* `FigurePlotTime`: Conducts sensitivity analysis and runtime evaluation for the Poisson editing process.
-* `writeGeoTiffSafe`: Safely exports the processed data to GeoTiff format.
-* `exportPng`: Exports visualization results as PNG images.
+### Python (Module 5)
+* **Version:** Python 3.9 or later.
+* **Required Packages:** `geopandas` (≥ 0.12), `rasterio` (≥ 1.3), `h5py`, `numpy`, `pandas`, `shapely`, `matplotlib`, `jupyterlab`.
+
+**Installation Example (Conda):**
+```bash
+conda create -n icestools python=3.10 geopandas rasterio h5py numpy pandas matplotlib jupyterlab
+conda activate icestools
+```
+
+---
+
+## 🚀 4. Quick Start
+
+Run each module from the repository root or adjust paths inside scripts. 
+
+**Dome‑effect correction (MATLAB)**
 ```matlab
-% 1) Profile comparison plots
+% Fit dome-effect surface and compare profiles
 cd('Reliefshading_Github/1_Dome_profile');
-profile_line
-
-### 4. Mask Classification (`4-Mask_Classification`)
-Classifies geomorphological features using masking techniques.
-* `plot_IOR_classification`: Performs mask classification specifically for snow and bare rock areas.
-% 2) LIC generalization and hillshade comparison
-cd('../2_LIC_Generalization');
-run_LIC_hillshade_comparison
-
-% 3) Poisson fusion
-cd('../3_Reliefshading');
-Poisson_hillshade
-
-% 4) IOR classification figure
-cd('../4_Mask_Classification');
-plot_IOR_classification
+fit_dome_effect_surface  % Outputs corrected DEM and figures
+profile_line             % Generates multi-panel profile plots
 ```
 
----
-## 💻 Prerequisites
+**LIC generalization (MATLAB)**
+```matlab
+cd('../2_LIC_Generalization');
+run_LIC_hillshade_comparison  % Creates LIC smoothed hillshades
+```
 
-This project is developed and tested in **MATLAB** *(e.g., R2022a or later)*. 
-To run the scripts successfully, please ensure you have the following MATLAB Toolboxes installed:
-* **Image Processing Toolbox** *(Required for masking and general image operations)*
-* **Mapping Toolbox** *(Required for GeoTiff I/O and spatial data handling)*
-* **Export_fig** *(Essential for exporting high-quality, publication-ready figures without background margins.
-*(Ensure this library is downloaded and added to your MATLAB path.)*
+**Poisson hillshade fusion (MATLAB)**
+```matlab
+cd('../3_Reliefshading');
+Poisson_hillshade  % Reads hillshades from step 2 and performs fusion
+```
 
-## 5. Input/Output Organization Tips
+**Mask classification (MATLAB)**
+```matlab
+cd('../4_Mask_Classification');
+plot_IOR_classification  % Generates classification maps
+```
 
-Because path assumptions differ slightly across scripts, the following practices help:
-- Keep input data close to scripts when possible and use relative paths.
-- If using centralized data folders (e.g., `data/`), define `projectRoot` and `dataDir` explicitly at the top of each script.
-- Create output folders in advance (e.g., `figures/`, `output/`, `Poisson_results/`) or ensure scripts auto-create them.
-
----
-
-## 6. Troubleshooting
-
-1. **Missing `.tif` or `.csv` files**
-   Check `fullfile(...)` path construction and local folder layout.
-
-2. **`geotiffwrite` / `readgeoraster` unavailable**
-   Usually indicates Mapping Toolbox is not installed.
-
-3. **`export_fig` unavailable**
-   Core workflow is still runnable; switch to `exportgraphics` fallback where applicable.
-
-4. **Slow Poisson fusion runtime**
-   Increase tolerance (`tol`) for quick validation first, then rerun with stricter settings.
+**ICESat‑2 optimization (Python Terminal)**
+```bash
+cd Reliefshading_Github/5_ICESat_Optimization
+jupyter notebook
+```
+*Open `ICESat_Accuracy_Optimization.ipynb` or `REMA_DEM_Check.ipynb` and follow the instructions in the first cell to set file paths.*
 
 ---
 
-## 7. Citation and Usage Notes
+## 📁 5. Input/Output Organization
 
-If this repository helps your research, please report:
-- Use of multi-azimuth hillshade fusion with Poisson editing.
-- Key parameter settings for your dataset (e.g., azimuth/elevation angles, `tol`).
+The scripts use relative paths wherever possible. Keep input and output folders separate to maintain a clean workspace:
+* Place raw DEMs in a folder such as `data/DEM_Data`.
+* Store sample/validation CSVs under `Reliefshading_Github/1_Dome_profile`.
+* Output figures will be saved in a `figures/` directory, and processed GeoTIFFs in an `output/` or `results/` folder.
 
-If desired, this codebase can be further packaged into a one-click reproducible entry point (e.g., `main.m` + `config.m`) with unified path checking and parameter management.
+---
+
+## ⚠️ 6. Troubleshooting
+
+* **Missing files:** Verify that your paths to `.tif` and `.csv` inputs are correct and the directories exist.
+* **`geotiffwrite` or `readgeoraster` missing:** Install the MATLAB Mapping Toolbox.
+* **Formatting differences in exported figures:** If `export_fig` is missing, the fallback `exportgraphics` may render backgrounds differently. Installing `export_fig` is recommended.
+* **Long runtime during Poisson fusion:** Start with a coarse tolerance for quick testing, then refine the tolerance parameter in `Poisson_edit.m` for final outputs.
+* **Python import errors:** Ensure all dependencies are installed and your conda/pip environment is activated before running the notebooks.
+
+---
+
+## 🙏 7. Citation and Acknowledgements
+
+If this code aids your research, please cite the associated paper and mention that you used multi‑azimuth hillshade fusion with Poisson editing. Please indicate relevant parameter settings such as azimuth angles and solver tolerances.
+
+This project builds upon ideas from **Geisthövel & Hurni (2018)** and integrates suggestions from subsequent reviewers regarding tie‑point cleaning and ICESat‑2 validation.
+
+## 📄 License
+
+Distributed under the MIT License. See the [LICENSE](LICENSE) file for more information.
