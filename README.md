@@ -101,11 +101,12 @@ conda activate icestools
 
 ## ⚠️ 4. Troubleshooting
 
-* **Missing files:** Verify that your paths to `.tif` and `.csv` inputs are correct and the directories exist.
-* **`geotiffwrite` or `readgeoraster` missing:** Install the MATLAB Mapping Toolbox.
-* **Formatting differences in exported figures:** If `export_fig` is missing, the fallback `exportgraphics` may render backgrounds differently. Installing `export_fig` is recommended.
-* **Long runtime during Poisson fusion:** Start with a coarse tolerance for quick testing, then refine the tolerance parameter in `Poisson_edit.m` for final outputs.
-* **Python import errors:** Ensure all dependencies are installed and your conda/pip environment is activated before running the notebooks.
+* **Missing files:** Verify that your paths to `.tif` and `.csv` inputs are strictly correct and the target directories exist.
+* **Data indexing errors (Missing original data):** Due to repository size constraints, the original large datasets are not included. Running the scripts directly without modification may result in data indexing or "file not found" errors. Please ensure you correctly substitute the placeholder paths and filenames with your own datasets before execution.
+* **`geotiffwrite` or `readgeoraster` missing:** Ensure the MATLAB Mapping Toolbox is installed.
+* **Formatting differences in exported figures:** If `export_fig` is missing, the fallback `exportgraphics` may render backgrounds differently. Installing `export_fig` is highly recommended.
+* **Long runtime during Poisson fusion:** Start with a coarse tolerance for rapid prototyping. Refine the tolerance parameter in `Poisson_edit.m` only for final, high-quality outputs.
+* **Python import errors:** Double-check that all required dependencies are installed and the `icestools` conda/pip environment is active before running the notebooks.
 
 ---
 
