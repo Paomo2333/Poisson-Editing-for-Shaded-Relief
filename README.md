@@ -4,7 +4,7 @@
 [![MATLAB](https://img.shields.io/badge/Made_with-MATLAB-blue.svg)](https://www.mathworks.com/products/matlab.html)
 [![Python](https://img.shields.io/badge/Made_with-Python-1f425f.svg)](https://www.python.org/)
 
-> **Official Repository for the paper:** > *"Enhancing Topographic Mapping Using Relief Shading: A Case Study of the Larsemann Hills, East Antarctica"*
+> **Official Repository for the paper:** > *"Enhancing Topographic Mapping Using Relief Shading: A Case Study of the Larsemann Hills, East Antarctica" DOI: https://doi.org/10.1007/s41651-026-00259-2*
 
 ## 📖 1. Overview
 
